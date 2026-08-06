@@ -1,0 +1,12 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Executando lint e type-check antes do commit..."
+
+npm run lint
+if [ $? -ne 0 ]; then
+  echo "❌ Lint falhou. Corrija os erros antes de commitar."
+  exit 1
+fi
+
+echo "✅ Lint passou. Prosseguindo com o commit."

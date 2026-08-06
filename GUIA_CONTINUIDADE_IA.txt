@@ -1,0 +1,260 @@
+================================================================================
+UC BRASIL — GUIA DE CONTINUIDADE PARA IA
+================================================================================
+Arquivo de handoff: se o acesso for perdido, outra IA (ou o mesmo agente) deve
+ler este arquivo ANTES de continuar o trabalho. Ele descreve o estado exato do
+projeto, as decisões tomadas e o passo a passo do que falta fazer.
+
+Última atualização: Dia 1 a 3 concluídos (API + Home + Busca + Ficha + SEO; build e smoke test OK).
+================================================================================
+
+1. O QUE É ESTE PROJETO
+--------------------------------------------------------------------------------
+UC Brasil é um catálogo digital INFORMATIVO (somente leitura) de Unidades de
+Conservação (UCs) do Brasil — federais, estaduais e municipais — com dados
+reais e oficiais do CNUC (Cadastro Nacional de Unidades de Conservação, MMA).
+
+D E C I S O E S   T O M A D A S   (NÃO reverter sem conversar com o usuário):
+- Escopo REDUZIDO a catálogo informativo: Home + Busca/Filtros + Ficha da UC.
+- CORTADO: mapa (MapLibre), dashboard, favoritos, compartilhamento, PWA
+  offline, autenticação, multilíngue, comparação, polígonos.
+- CORTADO: banco de dados (PostgreSQL/PostGIS/Redis) e Docker — não há Docker
+  instalado na máquina. Os dados vivem em um ARQUIVO JSON gerado do CSV do CNUC.
+- Stack fixa: Next.js 14 (App Router) + React 18 + TypeScript + Tailwind CSS.
+- Deploy alvo: Vercel (gratuito). Sem banco, sem serviços pagos.
+- Idioma do código/comentários: português brasileiro. UI em PT-BR.
+- Meta: MVP público em 7 dias. Dia 1 já concluído.
+
+================================================================================
+2. ESTADO ATUAL DO PROJETO (o que já está pronto)
+================================================================================
+[ x ] Dataset CNUC baixado e validado: 3.421 UCs
+      Fonte: https://dados.mma.gov.br/dataset/unidadesdeconservacao
+      CSV: cnuc_2026_03_atualizado.csv (semestral, atualizado mar/2026)
+      Encoding do CSV original: Latin-1 (ISO-8859-1). Sem BOM.
+[ x ] Script de transformação: scripts/transform/cnuc-to-json.js
+      Entrada: scripts/data/cnuc/cnuc_2026_03.csv
+      Saída:   src/data/ucs.json (UTF-8, array de 3.421 objetos)
+      Colunas do CSV mapeadas (separador ";"), normalizadas:
+        id (ID_UC), codigo, nome, slug (gerado, sem duplicatas), esfera,
+        categoria, categoria_iuuc, uf, ano_criacao, ato_legal, municipios,
+        plano_manejo, conselho_gestor, orgao_gestor, area_ha, bioma, grupo,
+        codigo_wdpa
+      Exemplo de registro em src/data/ucs.json:
+        { "id":"1.045", "codigo":"0000.00.1045",
+          "nome":"RESERVA PARTICULAR DO PATRIMÔNIO NATURAL SÍTIO DO JACU",
+          "slug":"reserva-particular-do-patrimonio-natural-sitio-do-jacu",
+          "esfera":"Federal","categoria":"Reserva Particular do Patrimônio Natural",
+          "categoria_iuuc":"Category IV","uf":"SP","ano_criacao":2001,
+          "ato_legal":"Portaria 52/2001 de 23/04/2001",
+          "municipios":"CARAGUATATUBA (SP)","plano_manejo":"Não",
+          "conselho_gestor":"Não","orgao_gestor":"INSTITUTO CHICO MENDES...",
+          "area_ha":2,"bioma":"Mata Atlântica","grupo":"Uso Sustentável",
+          "codigo_wdpa":"555682724" }
+      Distribuição: Federal 1101 / Estadual 1440 / Municipal 880.
+                     Uso Sustentável 2322 / Proteção Integral 1099.
+[ x ] Dependências instaladas (npm install, 343 pacotes).
+      Removidos do package.json: maplibre-gl, @maplibre/maplibre-gl,
+      workbox-window, recharts, react-intersection-observer, zustand, date-fns.
+      Mantidos: next, react, react-dom, typescript, tailwindcss,
+      @tailwindcss/typography, shadcn-ui, @tanstack/react-query,
+      react-hook-form, zod, @hookform/resolvers, clsx, tailwind-merge,
+      class-variance-authority, lucide-react.
+[ x ] Tipos TypeScript criados: src/types/index.ts
+      (UnidadeConservacao, EstatisticasNacionais, FiltrosBusca,
+       ResultadoBusca, ApiError). NÃO usar o tipo antigo (foi apagado).
+[ x ] Camada de dados server-side: src/lib/ucs.ts
+      Importa src/data/ucs.json. Funções:
+        getUCByIdentifier(identifier)  -> UC por id, slug ou código
+        buscarUCs(filtros)             -> filtros q/esfera/grupo/categoria/
+                                           bioma/uf, ordenação nome|area|ano,
+                                           paginação page/per_page
+        getEstatisticas()              -> totais e contagens
+      IMPORTANTE: este módulo é SERVER-ONLY (importa JSON 2,3 MB). Não importar
+      em componentes client.
+[ x ] API Routes funcionando (testadas no build):
+        GET /api/ucs            -> busca+filtros+paginado
+                                   Query: q, esfera, grupo, categoria, bioma,
+                                   uf, ordem, page, per_page (máx 100)
+                                   Resposta: ResultadoBusca
+        GET /api/ucs/[slug]     -> ficha da UC (slug, id ou código)
+                                   404 com {code:"NOT_FOUND"} se não existir
+        GET /api/estatisticas   -> EstatisticasNacionais
+      Cache-Control já configurado (s-maxage/stale-while-revalidate).
+[ x ] Configs ajustadas ao novo escopo:
+      package.json   (deps enxutas + script data:transform)
+      .env.example   (só variáveis de app + URLs do CNUC)
+      next.config.js (headers de segurança; removido webpack/rewrites antigos)
+[ x ] Limpeza executada (arquivos apagados da fase antiga):
+      src/components/map, src/components/dashboard,
+      src/components/layout/Header.tsx, src/components/ucs/UCCard.tsx,
+      src/app/(routes)/mapa|dashboard|favoritos, src/data/ucs.ts,
+      src/hooks/useUCs.ts, src/types/index.ts (recriado), database/,
+      scripts/db/, docker-compose.yml, Dockerfile, public/manifest.json,
+      public/icons, public/images.
+[ x ] Build limpo: `npm run build` OK (rotas /, /api/estatisticas,
+      /api/ucs, /api/ucs/[slug], /buscar, /sitemap.xml, /robots.txt e
+      3421 páginas SSG de /ucs/[slug]).
+[ x ] ESLint configurado: .eslintrc.json (extends next/core-web-vitals) +
+      devDependency eslint-config-next. `npm run lint` limpo.
+[ x ] Layout global: Header (logo + nav Início/Buscar) e Footer (crédito
+      dados.mma.gov.br) renderizados no layout.tsx; Providers.tsx com
+      QueryClientProvider (TanStack Query).
+[ x ] Ficha da UC: src/app/(routes)/ucs/[slug]/page.tsx
+      - generateStaticParams() -> 3421 slugs; ISR revalidate 86400
+      - generateMetadata() dinâmico por UC (title/OG)
+      - notFound() quando a UC não existe
+      - Exibe só campos preenchidos (campos vazios são omitidos)
+      - Helper formatArea() adicionado em src/lib/utils.ts
+      - Pasta anterior "[id]" removida (a rota usa SLUG)
+[ x ] Home: src/app/page.tsx (server component)
+      - getEstatisticas() direto; cards total/esfera, área total,
+        top 5 biomas, top 8 estados; CTA para /buscar.
+[ x ] Busca: src/app/(routes)/buscar/page.tsx (server, passa opcoes de
+      filtro via listarOpcoes()) + BuscarCliente.tsx (client, TanStack
+      Query, debounce via useDeferredValue, paginação, estados de
+      loading/erro/vazio, aria-live).
+[ x ] UCCard: src/components/ucs/UCCard.tsx (link para /ucs/<slug>).
+[ x ] SEO: src/app/sitemap.ts (3423 URLs) e src/app/robots.ts.
+[ x ] Smoke test (next start -p 3100): Home, /buscar, ficha de UC,
+      /api/estatisticas, /api/ucs?uf=SP e sitemap.xml -> todos 200.
+      Servidor de teste encerrado.
+
+RESULTADO TESTADO (via next start na porta 3100):
+  GET /api/estatisticas  -> total_ucs=3421, federal=1101, estadual=1440, municipal=880
+  GET /api/ucs?esfera=Federal&per_page=3 -> total=1101
+  GET /api/ucs?q=lencois -> total=5
+  (A acentuação "quebrada" no console do Windows é só EXIBIÇÃO do PowerShell;
+   os arquivos e o JSON são UTF-8 válidos.)
+
+================================================================================
+3. ESTRUTURA DE ARQUIVOS ATUAL (relevante)
+--------------------------------------------------------------------------------
+.
+├── GUIA_CONTINUIDADE_IA.txt       <- este arquivo
+├── AGENTS.md                      <- regras do projeto + agentes/skills
+├── .env.example                   <- modelo de variáveis
+├── next.config.js  tsconfig.json  tailwind.config.ts  package.json
+├── docs/
+│   ├── plano-desenvolvimento.md   <- plano mestre (19 semanas, referência)
+│   └── plano-7-dias.md            <- plano fast-track 7 dias (referência)
+├── scripts/
+│   ├── data/cnuc/cnuc_2026_03.csv <- fonte bruta (ignorada pelo git)
+│   └── transform/cnuc-to-json.js  <- gera o dataset JSON
+├── src/
+│   ├── app/
+│   │   ├── layout.tsx             <- Header/Footer + Providers + metadata OK
+│   │   ├── page.tsx               <- Home com estatísticas OK
+│   │   ├── providers.tsx          <- TanStack Query OK
+│   │   ├── sitemap.ts / robots.ts <- SEO OK
+│   │   ├── globals.css            <- Tailwind + estilos base OK
+│   │   └── (routes)/
+│   │       ├── api/ucs/route.ts           <- OK
+│   │       ├── api/ucs/[slug]/route.ts    <- OK
+│   │       ├── api/estatisticas/route.ts  <- OK
+│   │       ├── buscar/page.tsx            <- OK (server -> passa opcoes)
+│   │       ├── buscar/BuscarCliente.tsx   <- OK (client, filtros + busca)
+│   │       └── ucs/[slug]/page.tsx        <- OK (ficha SSG + 404)
+│   ├── components/
+│   │   ├── ui/button.tsx          <- OK (componente base)
+│   │   ├── layout/Header.tsx      <- OK
+│   │   ├── layout/Footer.tsx      <- OK
+│   │   ├── ucs/UCCard.tsx         <- OK
+│   │   └── shared/                <- vazio
+│   ├── data/ucs.json              <- dataset (2,3 MB, commitável)
+│   ├── lib/ucs.ts                 <- acesso a dados server-side OK
+│   │                               (getUCByIdentifier, buscarUCs,
+│   │                                getEstatisticas, listarSlugs,
+│   │                                listarOpcoes)
+│   ├── lib/utils.ts               <- utilitários OK (formatArea, cn...)
+│   └── types/index.ts             <- tipos OK
+└── tests/                         <- vazio (estrutura mantida)
+
+Observações:
+- A rota da ficha usa a pasta (routes)/ucs/[slug]/ e o parâmetro é o SLUG
+  (handler aceita slug, id ou código).
+
+================================================================================
+4. PASSOS RESTANTES (ordem de execução)
+================================================================================
+QUALIDADE E PUBLICAÇÃO (últimos passos antes do lançamento):
+  [ ] Revisar responsividade mobile (testar 375px): Home, Busca, Ficha
+  [ ] Conferir acessibilidade básica: contraste, foco, labels, ordem de leitura
+  [ ] (Opcional) Testes: adicionar 1 teste unitário simples de lib/ucs
+      (ex.: buscarUCs com filtro esfera) em tests/unit/
+  [ ] git init + primeiro commit (ver .gitignore: data/*.csv exclui o CNUC
+      bruto; src/data/ucs.json deve ser commitado)
+  [ ] Criar repositório GitHub + push
+  [ ] Deploy na Vercel (conta gratuita) importando o repo
+      Build command: npm run build · Instalar com npm
+  [ ] Variáveis de ambiente na Vercel: NEXT_PUBLIC_APP_URL = URL de produção
+  [ ] Smoke test em produção: /, /buscar, uma ficha, /api/estatisticas
+  [ ] (Opcional) Ligar domínio próprio (Vercel permite gratis no plano Hobby
+      apenas com domínio de terceiros)
+
+MELHORIAS FUTURAS (fora do MVP atual — perguntar ao usuário antes de fazer):
+  - Adicionar mapa, favoritos, compartilhamento, dashboard, comparação
+  - Voltar a usar Postgres/PostGIS quando Docker estiver disponível
+  - Integrar ICMBio/SiBBr/IBGE (ver seção 6 — alguns hosts falham no ambiente)
+
+================================================================================
+5. COMANDOS ÚTEIS
+--------------------------------------------------------------------------------
+Instalar/atualizar deps:        npm install
+Dev server:                     npm run dev          (http://localhost:3000)
+Rodar build (typecheck+lint):   npm run build
+Rodar lint:                     npm run lint
+Regenerar dataset JSON:         npm run data:transform
+  (re-baixa? NÃO — usa o CSV já salvo. Para re-baixar o CSV, usar o script
+   PowerShell: Invoke-WebRequest da URL em .env.example CNUC_CSV_URL)
+Rodar servidor de produção:     npm run build ; node node_modules/next/dist/bin/next start -p 3100
+
+Git: o projeto NÃO é repositório git ainda. Inicializar antes do deploy.
+
+================================================================================
+6. FONTES DE DADOS (para atualizações futuras)
+--------------------------------------------------------------------------------
+Dataset oficial (MMA):  https://dados.mma.gov.br/dataset/unidadesdeconservacao
+  - CSV mais recente: recurso "CNUC_2026_03"
+  - API CKAN: https://dados.mma.gov.br/api/3/action/package_show?id=unidadesdeconservacao
+    (retorna lista de recursos/URLs de download — sem autenticação)
+  - Formato do CSV: separador ";" , encoding Latin-1, ~3.421 linhas de dados.
+  - Colunas novas podem aparecer/alterar; scripts/transform mapeia por NOME de
+    coluna e aborta com mensagem clara se alguma sumir.
+Endpoints externos que NÃO funcionaram nesta máquina (DNS):
+  - apiservice.icmbio.gov.br (API CNUC) — indisponível/no ambiente
+  - servicos.ibge.gov.br — indisponível no ambiente
+  - www.icmbio.gov.br — retorna 403
+  Usar sempre dados.mma.gov.br como fonte primária.
+
+================================================================================
+7. AGENTES E SKILLS (regras de comportamento da IA)
+--------------------------------------------------------------------------------
+Skills disponíveis em .opencode/skill/ (carregar via tool skill antes de agir):
+  - uc-brasil-architect:     arquitetura, decisões, justificativas, alternativas
+  - uc-brasil-data-engineer: dados, pipelines, normalização, PostGIS
+  - uc-brasil-frontend:      UI, PWA, acessibilidade, performance
+Regras fixas do AGENTS.md:
+  - Gratuito/open-source no core. Sem tecnologias pagas.
+  - Acessibilidade WCAG 2.1 AA. Performance (Core Web Vitals).
+  - NÃO é app nativo. NÃO tem mapa nesta fase.
+  - Documentar cada decisão (ADR em docs/).
+
+================================================================================
+8. OBSERVAÇÕES IMPORTANTES PARA A PRÓXIMA IA
+--------------------------------------------------------------------------------
+1. O console do Windows mostra acentos "quebrados" em Invoke-WebRequest —
+   NÃO é corrupção; os arquivos são UTF-8. Usar o Read/Grep das ferramentas.
+2. Não reinstalar maplibre/recharts/workbox/zustand/date-fns sem pedir ao usuário.
+3. O arquivo src/data/ucs.json É o banco de dados do MVP. Alterações de dados =
+   editar ucs.json ou reexecutar scripts/transform/cnuc-to-json.js.
+4. NÃO importar lib/ucs.ts em componentes client (o JSON de 2,3MB iria ao navegador).
+   Usar a API (/api/ucs) a partir do client.
+5. Servidor de teste na porta 3100 pode estar ativo (PID antigo). Para matar:
+   Get-Process -Id <pid> | Stop-Process   (ou procurar node no port 3100).
+6. Comentários no código: EVITAR (o AGENTS/opencode pede código sem comentários
+   a menos que solicitado). Usar nomes descritivos.
+7. Se o usuário pedir algo que contradiga este guia, PERGUNTAR antes de mudar.
+================================================================================
+FIM DO GUIA
+================================================================================
