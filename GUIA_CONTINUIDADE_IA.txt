@@ -373,6 +373,14 @@ Rodar lint:                     npm run lint
 DEPLOY (manual, alternativa ao GitHub Actions):
                                 npx vercel build --prod
                                 npx vercel deploy --prebuilt --prod --archive=tgz
+  ATENÇÃO (06/08/2026): `vercel deploy --prod` (build remoto) PODE produzir
+  CSS com @tailwind não processado (página sem estilos). Causa: a Vercel
+  restaura o "build cache" do deployment anterior e o `next build` incremental
+  reutiliza o CSS antigo (o cache remoto foi criado na era pré-postcss). NÃO é
+  corrigido mudando o buildCommand. Solução que funcionou: alterar um byte do
+  src/app/globals.css (muda o hash do CSS e força rebuild completo via PostCSS)
+  e redeployar; o cache novo fica bom. Verificação: baixar o CSS do HTML da
+  produção e checar se contém "@tailwind" (quebrado) ou não (ok).
 Regenerar dataset JSON:         npm run data:transform
   (re-baixa? NÃO — usa o CSV já salvo. Para re-baixar o CSV, usar o script
    PowerShell: Invoke-WebRequest da URL em .env.example CNUC_CSV_URL)
