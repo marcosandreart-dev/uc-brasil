@@ -62,8 +62,29 @@ FALTA para fechar o MVP:
 DEPOIS do MVP: dashboard com gráficos, comparação entre UCs, API pública,
 painel administrativo, multilíngue.
 
+===============================================================================
+1.6. PRÓXIMA SESSÃO (combinado em 06/08/2026 — NÃO executar antes de alinhar)
+-------------------------------------------------------------------------------
+O usuário tem uma PÁGINA EXISTENTE onde quer ANEXAR a UC Brasil:
+  - URL: https://guiaucs.vercel.app/ (site one-page educativo sobre UCs,
+    também na Vercel). Apenas ANALISADO, nada modificado ainda.
+  - Não foi definido ainda COMO anexar (link no menu / subdomínio / iframe /
+    integração total no mesmo site) — perguntar antes.
+  - A forma de anexo, a plataforma/tecnologia e a URL foram PERGUNTADAS e o
+    usuário dispensou o questionário — retomar essas perguntas na sessão.
+PLANO PARA AMANHÃ (só começar quando o usuário mandar):
+  1) Definir com o usuário como anexar a UC Brasil à página existente.
+  2) Aplicar a IDENTIDADE VISUAL do guiaucs (paleta verde/natureza, tipografia,
+     cards, header, seções) ao projeto UC Brasil — HOJE NÃO, ficou combinado
+     fazer amanhã. Não quebrar busca/ficha/mapa no processo.
+Observações levantadas (registro, não foram corrigidas):
+  - Os contadores do guiaucs ("+0", "0 Milhões") aparecem zerados no HTML —
+    possível bug de contador animado ou placeholder.
+  - Números do guiaucs (385 federal / 1.065 estadual / 739 municipal) são
+    aproximados e destoam dos dados reais do CNUC (1.101 / 1.440 / 880).
 
-================================================================================
+
+===============================================================================
 2. ESTADO ATUAL DO PROJETO (o que já está pronto)
 ================================================================================
 [ x ] Dataset CNUC baixado e validado: 3.421 UCs
