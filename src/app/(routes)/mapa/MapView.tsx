@@ -55,7 +55,7 @@ export default function MapView() {
       (window as any).__ucMap = map;
       console.log(
         "[uc-debug] layers:",
-        map.getStyle().layers.map((l: any) => l.id).join(",")
+        map.getStyle()?.layers.map((l: any) => l.id).join(",")
       );
     }
 
@@ -166,7 +166,7 @@ export default function MapView() {
         setStatus("pronto");
         console.log(
           "[uc-debug] layers after add:",
-          map.getStyle().layers.map((l: any) => l.id).join(",")
+          map.getStyle()?.layers.map((l: any) => l.id).join(",")
         );
       } catch {
         setStatus("erro");
