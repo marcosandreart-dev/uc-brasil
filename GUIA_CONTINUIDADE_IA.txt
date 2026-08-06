@@ -5,7 +5,7 @@ Arquivo de handoff: se o acesso for perdido, outra IA (ou o mesmo agente) deve
 ler este arquivo ANTES de continuar o trabalho. Ele descreve o estado exato do
 projeto, as decisões tomadas e o passo a passo do que falta fazer.
 
-Última atualização: 06/08/2026 — MAPA CORRIGIDO EM PRODUÇÃO (Tailwind + worker do MapLibre).
+Última atualização: 06/08/2026 — SEÇÃO TERRAS INDÍGENAS MIGRADA PARA SITE/REPO PRÓPRIO (ver item 2).
 ================================================================================
 
 1. O QUE É ESTE PROJETO
@@ -231,6 +231,26 @@ Observações levantadas (registro, não foram corrigidas):
 [ x ] Smoke test (next start -p 3100): Home, /buscar, ficha de UC,
       /api/estatisticas, /api/ucs?uf=SP e sitemap.xml -> todos 200.
       Servidor de teste encerrado.
+
+[ ! ] SEÇÃO TERRAS INDÍGENAS MIGRADA (06/08/2026) — NÃO mora mais neste repo:
+      - Decisão do usuário: a seção TI NÃO deve ficar na mesma base/URL das UCs.
+        Virou um SITE SEPARADO com REPO SEPARADO:
+      - Repo GitHub:    marcosandreart-dev/terras-indigenas
+      - Site (prod):    https://terras-indigenas.vercel.app
+      - Pasta local:    C:\Users\marco\OneDrive\Desktop\terras-indigenas
+      - Projeto Vercel: "terras-indigenas" (prj_WXWLpGdIEMJxQYHNSRAfqZpjzaa6,
+        org team_5ADJjttgTBouoIYWUrrQlSfb), deploy via GitHub Actions
+        (.github/workflows/deploy.yml) com VERCEL_TOKEN; redeploy manual via
+        `npx vercel deploy --prod --archive=tgz --yes`.
+      - A seção TI deste repo (ad1360d) foi REMOVIDA via revert (c92b182):
+        páginas /terras-indigenas e /mapa-ti, APIs tis*/estatisticas-ti,
+        src/lib/tis.ts, src/types (TerraIndigena etc.), TICard.tsx,
+        src/data/tis.json, public/tis_poligonos.geojson, scripts tis-*,
+        nav do Header e entradas de sitemap. O UC Brasil volta a ser
+        exclusivo de UCs (Home e busca já eram; validado: build 3431 páginas).
+      - Detalhes técnicos das TIs (fonte FUNAI CGGEO WFS, 661 TIs, encoding
+        Latin-1, transform scripts, worker MapLibre em public/) estão no
+        GUIA/README do repo terras-indigenas — NÃO duplicar aqui.
 
 RESULTADO TESTADO (via next start na porta 3100):
   GET /api/estatisticas  -> total_ucs=3421, federal=1101, estadual=1440, municipal=880
