@@ -13,8 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "data:transform": "node scripts/transform/cnuc-to-json.js",
-    "data:transform:tis": "node scripts/transform/tis-to-json.js && node scripts/transform/tis-shp-to-geojson.js"
+    "data:transform": "node scripts/transform/cnuc-to-json.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.0",
