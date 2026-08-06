@@ -3,6 +3,7 @@ import { Leaf } from "lucide-react";
 
 const NAV = [
   { href: "/", label: "Início" },
+  { href: "/mapa", label: "Mapa" },
   { href: "/buscar", label: "Buscar UCs" },
 ];
 

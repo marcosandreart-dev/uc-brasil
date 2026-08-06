@@ -46,3 +46,6 @@ coverage/
 .nyc_output
 .cache/
 .tmp/
+
+.vercel
+.env*
