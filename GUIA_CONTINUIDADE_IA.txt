@@ -5,7 +5,7 @@ Arquivo de handoff: se o acesso for perdido, outra IA (ou o mesmo agente) deve
 ler este arquivo ANTES de continuar o trabalho. Ele descreve o estado exato do
 projeto, as decisões tomadas e o passo a passo do que falta fazer.
 
-Última atualização: 05/08/2026 — MVP publicado na Vercel + Mapa implementado (MapLibre) + deploy automático via GitHub Actions.
+Última atualização: 06/08/2026 — MAPA CORRIGIDO EM PRODUÇÃO (Tailwind + worker do MapLibre).
 ================================================================================
 
 1. O QUE É ESTE PROJETO
@@ -61,7 +61,12 @@ D E C I S O E S   T O M A D A S   (NÃO reverter sem conversar com o usuário):
       - Página /mapa (server) + MapView.tsx (client, dynamic ssr:false)
       - maplibre-gl v6 (import NAMED: `import * as maplibregl` — a v6 não tem
         export default). CSS: maplibre-gl/dist/maplibre-gl.css.
-      - Basemap gratuito: CARTO positron (basemaps.cartocdn.com GL style)
+      - Basemap gratuito: CARTO raster light_all como camada OPCIONAL
+        (tiles https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png),
+        adicionado ABAIXO dos polígonos (beforeId "ucs-fill"). O estilo GL do
+        CARTO (positron-gl-style) NÃO disparava load no MapLibre — por isso o
+        mapa usa ESTILO LOCAL inline (versão 8, camada background #f3f6f4)
+        + raster CARTO. Watchdog de 1s + failsafe de 20s p/ addSource/addLayer.
       - Polígonos: public/ucs_poligonos.geojson (7 MB, servido como estático;
         NÃO passa pelo bundle). Conversão via scripts/transform/shp-to-geojson.js
         usando o pacote `shapefile` (streaming) + `simplify-js` (tolerância 0.005
@@ -71,6 +76,38 @@ D E C I S O E S   T O M A D A S   (NÃO reverter sem conversar com o usuário):
       - SHP bruto: scripts/data/cnuc/cnuc_2025_08.* (gitignored via scripts/data/).
       - Casamento polígonos ↔ ucs.json por cd_cnuc/código + nome: 3.120 de 3.122.
       - /mapa adicionado ao Header (nav) e ao sitemap.ts.
+      - Popup ao clicar no polígono (nome/categoria/esfera/UF + link para a ficha).
+
+[ x ] FIXES CRÍTICOS EM PRODUÇÃO feitos em 06/08/2026 (NÃO regredir):
+  1) postcss.config.js + autoprefixer:
+     - Faltava postcss.config.js -> o Tailwind NUNCA processava: o CSS final
+       continha literalmente "@tailwind base;components;utilities" e o site
+       ficava SEM estilos (mapa com altura 0). Foi criado postcss.config.js
+       (plugins: tailwindcss + autoprefixer) e instalado `autoprefixer` (devDep).
+     - IMPORTANTE: limpar `.next` depois de mudar postcss config (Next usa cache
+       de webpack e pode reusar CSS antigo). O cache da NUVEM do Vercel também
+       reutilizou o CSS velho depois do fix — por isso o workflow virou prebuilt.
+  2) Workflow de deploy agora é PREBUILT (build no runner do GitHub, cache limpo):
+     - .github/workflows/deploy.yml: npm ci -> vercel pull --environment=production
+       -> vercel build --prod -> vercel deploy --prebuilt --prod --archive=tgz.
+     - `--archive=tgz` OBRIGATÓRIO: sem ele o upload falha com "files should NOT
+       have more than 15000 items" (o .vercel/output do Next tem >20k arquivos).
+     - Deploy NÃO pode voltar para `vercel --prod` simples: o build na nuvem do
+       Vercel reutiliza cache e serviria CSS/tailwind velhos.
+  3) Worker do MapLibre v6 (CAUSA RAIZ dos polígonos não renderizarem):
+     - No v6.1.0 a URL do worker é derivada de `import.meta.url` (função di());
+       no bundle do Next essa URL não é http(s) -> retorna "" -> `new Worker('')`
+       lança -> a fila de workers nunca cria -> fontes que dependem de worker
+       (geojson) ficam travadas em "loading" -> o `load` do mapa nunca dispara
+       e os polígonos não aparecem (raster ainda renderiza). Sintomas exatos:
+       map.isStyleLoaded()==false, source ucs loaded()==false, renderedFill==0.
+     - FIX: copiar `node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs` e
+       `maplibre-gl-shared.mjs` para `public/` (o worker importa o shared via
+       caminho relativo) e chamar `maplibregl.setWorkerUrl("/maplibre-gl-worker.mjs")`
+       no MapView.tsx (topo do módulo, guarded por typeof window). Testar se
+       uma atualização do maplibre muda esses arquivos (re-copiar).
+     - TESTADO em produção: load dispara, ucs loaded, 1.128 features renderizadas
+       e clique no polígono abre popup + link para a ficha (200).
 [ x ] Dependências instaladas (npm install, 343 pacotes).
       Removidos do package.json na etapa de redução de escopo: workbox-window,
       recharts, react-intersection-observer, zustand, date-fns.
@@ -223,23 +260,16 @@ QUALIDADE E PUBLICAÇÃO (últimos passos antes do lançamento):
         (opcional — sem isso o deploy é manual via `vercel --prod`)
       - Smoke test em produção OK: /, /buscar, ficha, /api/estatisticas,
         /api/ucs?uf=SP, sitemap.xml -> todos 200
-  [x] Deploy automático via GitHub Actions em 05/08/2026:
-      - .github/workflows/deploy.yml: dispara em push para main (e
-        workflow_dispatch) e roda `npx vercel@latest --prod --yes
-        --token=${{ secrets.VERCEL_TOKEN }}`
-      - Secret VERCEL_TOKEN no GitHub = token de login do CLI do Vercel
-        (a conta NÃO permite criar tokens novos via API/CLI: 403; por isso
-        reutilizei o token do auth.json). Se o usuário fizer logout do CLI,
-        o deploy automático quebra — regenerar com `vercel login` e
-        atualizar o secret (gh secret set VERCEL_TOKEN).
+  [x] Deploy automático via GitHub Actions (REVISADO em 06/08/2026):
+      - .github/workflows/deploy.yml agora faz build PREBUILT no runner:
+        npm ci -> vercel pull -> vercel build -> vercel deploy --prebuilt
+        --prod --archive=tgz (token VERCEL_TOKEN = secret do GitHub).
+      - `--archive=tgz` é obrigatório (>15000 arquivos no output do Next).
+      - Nunca voltar para `vercel --prod` (build na nuvem do Vercel usa cache
+        e reutilizou CSS/Tailwind antigos — quebrou o layout e o mapa).
       - Env VERCEL_ORG_ID=team_5ADJjttgTBouoIYWUrrQlSfb e
         VERCEL_PROJECT_ID=prj_WxQZwsLPTnSDKCSe8QkD49hVxRRI no workflow
         (orgId/projectId do .vercel/project.json; o .vercel é gitignored).
-      - gh precisou de `workflow` scope (gh auth refresh -s workflow) para
-        poder fazer push do arquivo .github/workflows.
-      - O login connection Vercel<->GitHub NÃO foi feito (fluxo OAuth do
-        navegador; usuário não conseguiu/complicado). GitHub Actions cobre
-        o deploy automático sem ele.
   [ ] Revisar responsividade mobile (testar 375px): Home, Busca, Ficha
   [ ] Conferir acessibilidade básica: contraste, foco, labels, ordem de leitura
   [ ] (Opcional) Testes: adicionar 1 teste unitário simples de lib/ucs
@@ -265,10 +295,15 @@ Instalar/atualizar deps:        npm install
 Dev server:                     npm run dev          (http://localhost:3000)
 Rodar build (typecheck+lint):   npm run build
 Rodar lint:                     npm run lint
+DEPLOY (manual, alternativa ao GitHub Actions):
+                                npx vercel build --prod
+                                npx vercel deploy --prebuilt --prod --archive=tgz
 Regenerar dataset JSON:         npm run data:transform
   (re-baixa? NÃO — usa o CSV já salvo. Para re-baixar o CSV, usar o script
    PowerShell: Invoke-WebRequest da URL em .env.example CNUC_CSV_URL)
 Rodar servidor de produção:     npm run build ; node node_modules/next/dist/bin/next start -p 3100
+  (atenção: o `next start` local NÃO serve chunks de rota com parênteses —
+   para validar /mapa use a produção ou `next dev`)
 
 Git: o projeto NÃO é repositório git ainda. Inicializar antes do deploy.
 
@@ -316,6 +351,16 @@ Regras fixas do AGENTS.md:
 6. Comentários no código: EVITAR (o AGENTS/opencode pede código sem comentários
    a menos que solicitado). Usar nomes descritivos.
 7. Se o usuário pedir algo que contradiga este guia, PERGUNTAR antes de mudar.
+8. O MapLibre NÃO cria workers sozinho no bundle do Next: os arquivos
+   maplibre-gl-worker.mjs e maplibre-gl-shared.mjs vivem em public/ e o
+   setWorkerUrl está no MapView.tsx. Ao ATUALIZAR o maplibre, re-copiar os
+   dois arquivos para public/ (senão o mapa para de renderizar polígonos).
+9. Playwright (devDep) é usado para depurar o mapa em produção com scripts
+   .tmp.js na raiz do projeto (ex.: test-*.tmp.js). Apagar esses scripts de
+   teste e os .png depois de usar (não devem ser commitados).
+10. Debug de produção: expor o mapa com window.__ucMap e consultar
+    map.isStyleLoaded(), getSource("ucs").loaded(), queryRenderedFeatures.
+    REMOVER o window.__ucMap antes de commitar.
 ================================================================================
 FIM DO GUIA
 ================================================================================
