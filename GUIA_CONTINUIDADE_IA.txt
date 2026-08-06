@@ -178,13 +178,54 @@ Observações:
 4. PASSOS RESTANTES (ordem de execução)
 ================================================================================
 QUALIDADE E PUBLICAÇÃO (últimos passos antes do lançamento):
+  [x] git init + commit inicial feito em 05/08/2026 (commit 297ea69)
+      - Git 2.55.0 instalado via winget (não estava presente no sistema)
+      - Identidade LOCAL do repo: Marco <marco@exemplo.com> (ajustar se o
+        usuário preferir outro nome/e-mail)
+      - .gitignore inclui scripts/data/ (CSV bruto CNUC não sobe);
+        src/data/ucs.json É commitado (é o dataset do app)
+  [x] Repositório GitHub criado e push feito em 05/08/2026:
+      https://github.com/marcosandreart-dev/uc-brasil  (público, branch main)
+      - gh 2.97.0 instalado via winget; login: marcosandreart-dev
+      - Importante: `gh`/`git` funcionam via caminho absoluto (git em
+        C:\Program Files\Git\cmd; gh em C:\Program Files\GitHub CLI\) porque
+        não estão no PATH da sessão; e o `gh` NÃO reconhece o diretório como
+        repo quando o caminho tem acento ("Conservação") — criar repo sem
+        --source e usar `git remote add` + `git push` no lugar.
+  [x] Deploy na Vercel publicado em 05/08/2026:
+      PRODUÇÃO: https://uc-brasil-iota.vercel.app
+      Inspect: https://vercel.com/marcosandre-artdev/uc-brasil
+      - Login do Vercel trocado para marcosandreart-4895
+        (e-mail marcosandre.art@gmail.com; conta antiga devmarcosandre-4902)
+      - Deploy feito com `vercel --prod --yes --name uc-brasil` (build remoto)
+      - GitHub connect na Vercel falhou (400): exige conectar o GitHub em
+        https://vercel.com/docs/accounts/create-an-account#login-methods-and-connections
+        (opcional — sem isso o deploy é manual via `vercel --prod`)
+      - Smoke test em produção OK: /, /buscar, ficha, /api/estatisticas,
+        /api/ucs?uf=SP, sitemap.xml -> todos 200
+  [x] Deploy automático via GitHub Actions em 05/08/2026:
+      - .github/workflows/deploy.yml: dispara em push para main (e
+        workflow_dispatch) e roda `npx vercel@latest --prod --yes
+        --token=${{ secrets.VERCEL_TOKEN }}`
+      - Secret VERCEL_TOKEN no GitHub = token de login do CLI do Vercel
+        (a conta NÃO permite criar tokens novos via API/CLI: 403; por isso
+        reutilizei o token do auth.json). Se o usuário fizer logout do CLI,
+        o deploy automático quebra — regenerar com `vercel login` e
+        atualizar o secret (gh secret set VERCEL_TOKEN).
+      - Env VERCEL_ORG_ID=team_5ADJjttgTBouoIYWUrrQlSfb e
+        VERCEL_PROJECT_ID=prj_WxQZwsLPTnSDKCSe8QkD49hVxRRI no workflow
+        (orgId/projectId do .vercel/project.json; o .vercel é gitignored).
+      - gh precisou de `workflow` scope (gh auth refresh -s workflow) para
+        poder fazer push do arquivo .github/workflows.
+      - O login connection Vercel<->GitHub NÃO foi feito (fluxo OAuth do
+        navegador; usuário não conseguiu/complicado). GitHub Actions cobre
+        o deploy automático sem ele.
   [ ] Revisar responsividade mobile (testar 375px): Home, Busca, Ficha
   [ ] Conferir acessibilidade básica: contraste, foco, labels, ordem de leitura
   [ ] (Opcional) Testes: adicionar 1 teste unitário simples de lib/ucs
       (ex.: buscarUCs com filtro esfera) em tests/unit/
-  [ ] git init + primeiro commit (ver .gitignore: data/*.csv exclui o CNUC
-      bruto; src/data/ucs.json deve ser commitado)
-  [ ] Criar repositório GitHub + push
+  [ ] (Opcional) Conectar GitHub na Vercel (login connections) p/ deploy
+      automático a cada push
   [ ] Deploy na Vercel (conta gratuita) importando o repo
       Build command: npm run build · Instalar com npm
   [ ] Variáveis de ambiente na Vercel: NEXT_PUBLIC_APP_URL = URL de produção
