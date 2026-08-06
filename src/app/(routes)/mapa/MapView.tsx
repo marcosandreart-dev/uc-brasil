@@ -4,6 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
+if (typeof window !== "undefined") {
+  maplibregl.setWorkerUrl("/maplibre-gl-worker.mjs");
+}
+
 const GEOJSON_URL = "/ucs_poligonos.geojson";
 const RASTER_BASEMAP = "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png";
 
