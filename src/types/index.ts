@@ -64,3 +64,50 @@ export interface ApiError {
   code: string;
   message: string;
 }
+
+// ============================================
+// Terras Indígenas (dados FUNAI — CGGEO)
+// ============================================
+
+export interface TerraIndigena {
+  id: string;
+  codigo: string;
+  nome: string;
+  slug: string;
+  etnias: string;
+  municipios: string;
+  uf: string;
+  area_ha: number | null;
+  situacao: string;
+  modalidade: string;
+  cr: string;
+  faixa_fronteira: string;
+  dominio_uniao: string;
+  data_atualizacao: string;
+}
+
+export interface EstatisticasTI {
+  total_tis: number;
+  area_total_ha: number;
+  por_situacao: Record<string, number>;
+  por_modalidade: Record<string, number>;
+  por_uf: Record<string, number>;
+}
+
+export interface FiltrosBuscaTI {
+  q?: string;
+  situacao?: string;
+  modalidade?: string;
+  uf?: string;
+  page?: number;
+  per_page?: number;
+  ordem?: "nome" | "area";
+}
+
+export interface ResultadoBuscaTI {
+  tis: TerraIndigena[];
+  total: number;
+  page: number;
+  per_page: number;
+  total_pages: number;
+}

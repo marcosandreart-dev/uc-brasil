@@ -5,7 +5,7 @@ Arquivo de handoff: se o acesso for perdido, outra IA (ou o mesmo agente) deve
 ler este arquivo ANTES de continuar o trabalho. Ele descreve o estado exato do
 projeto, as decisões tomadas e o passo a passo do que falta fazer.
 
-Última atualização: 06/08/2026 — MAPA CORRIGIDO EM PRODUÇÃO (Tailwind + worker do MapLibre).
+Última atualização: 06/08/2026 — NOVA SEÇÃO TERRAS INDÍGENAS (dados FUNAI) implementada e validada.
 ================================================================================
 
 1. O QUE É ESTE PROJETO
@@ -232,6 +232,43 @@ Observações levantadas (registro, não foram corrigidas):
       /api/estatisticas, /api/ucs?uf=SP e sitemap.xml -> todos 200.
       Servidor de teste encerrado.
 
+[ x ] NOVA SEÇÃO TERRAS INDÍGENAS (06/08/2026) — independente das UCs:
+      - Fonte oficial: FUNAI CGGEO — WFS
+        https://geoserver.funai.gov.br/geoserver/Funai/ows?service=WFS&version=1.0.0&
+        request=GetFeature&typeName=Funai:tis_poligonais&outputFormat=CSV (e SHAPE-ZIP).
+      - Encoding dos arquivos FUNAI: Latin-1 (ISO-8859-1). O .dbf do shapefile
+        trunca nomes de campo em 10 chars (terrai_cod, terrai_nom, etnia_nome,
+        municipio_, uf_sigla, superficie, fase_ti, modalidade, cr, faixa_fron, ...).
+      - Dataset: 661 Terras Indígenas. fase_ti: Regularizada 494, Declarada 73,
+        Encaminhada RI 26, Delimitada 45, Homologada 17, Em Estudo 6.
+        modalidade: Tradicionalmente ocupada 580, Reserva Indígena 64,
+        Dominial Indígena 11, Interditada 6.
+      - 11 nomes duplicados resolvidos com sufixo de UF no slug (ex.: bacurizinho-ma).
+      - Transformação: scripts/transform/tis-to-json.js (lê .dbf Latin-1 via pacote
+        `shapefile` -> src/data/tis.json, 661 registros) e
+        scripts/transform/tis-shp-to-geojson.js (-> public/tis_poligonos.geojson,
+        1.3 MB, 661 features, 98% menos vértices via simplify-js; 595 Polygon +
+        66 MultiPolygon; TODAS as features com slug). Script npm: data:transform:tis.
+      - Bruto: scripts/data/funai/ (gitignored via scripts/data/).
+      - lib server-only: src/lib/tis.ts (getTIByIdentifier, buscarTIs,
+        listarSlugsTI, listarOpcoesTI, getEstatisticasTI). Tipos em src/types/index.ts
+        (TerraIndigena, EstatisticasTI, FiltrosBuscaTI, ResultadoBuscaTI).
+      - API: /api/tis (busca+filtros+paginado), /api/tis/[slug] (404 {code:"NOT_FOUND"}),
+        /api/estatisticas-ti (totais: 661 TIs, 125.390.202,76 ha, por_situacao/
+        por_modalidade/por_uf — UFs compostas tipo "AM,PA").
+      - Páginas: /terras-indigenas (busca + filtros + cards via TIBuscaCliente.tsx)
+        e /terras-indigenas/[slug] (ficha SSG + ISR revalidate 86400, generateStaticParams
+        via listarSlugsTI, notFound). Card: src/components/tis/TICard.tsx.
+      - Mapa: /mapa-ti + MapViewTI.tsx (MapLibre v6, setWorkerUrl public, CARTO raster,
+        fill #b45309 / line #92400e, popup com link para a ficha).
+      - SEO: sitemap.ts com rotas de TI; Header.tsx nav agora tem Terras Indígenas
+        e Mapa TIs. Home e busca do topo CONTINUAM exclusivas de UC (decisão do usuário).
+      - VALIDADO: npm run build OK (4096 páginas, lint+typecheck limpos; 661 fichas TI
+        SSG). Smoke prod (porta 3100): /api/estatisticas-ti, /api/tis, /api/tis/acapuri-
+        de-cima (200), /api/tis/nao-existe (404), /terras-indigenas, /sitemap.xml.
+        Smoke dev (porta 3101): /mapa-ti e /terras-indigenas/acapuri-de-cima (200).
+        UTF-8 da API confirmado por bytes crus (416e616ec3a173 = "Ananás").
+
 RESULTADO TESTADO (via next start na porta 3100):
   GET /api/estatisticas  -> total_ucs=3421, federal=1101, estadual=1440, municipal=880
   GET /api/ucs?esfera=Federal&per_page=3 -> total=1101
@@ -356,6 +393,9 @@ DEPLOY (manual, alternativa ao GitHub Actions):
 Regenerar dataset JSON:         npm run data:transform
   (re-baixa? NÃO — usa o CSV já salvo. Para re-baixar o CSV, usar o script
    PowerShell: Invoke-WebRequest da URL em .env.example CNUC_CSV_URL)
+Regenerar dataset de TIs:       npm run data:transform:tis
+  (gera src/data/tis.json e public/tis_poligonos.geojson a partir de
+   scripts/data/funai/ — re-executa os dois scripts de transform)
 Rodar servidor de produção:     npm run build ; node node_modules/next/dist/bin/next start -p 3100
   (atenção: o `next start` local NÃO serve chunks de rota com parênteses —
    para validar /mapa use a produção ou `next dev`)
@@ -408,8 +448,9 @@ Regras fixas do AGENTS.md:
 7. Se o usuário pedir algo que contradiga este guia, PERGUNTAR antes de mudar.
 8. O MapLibre NÃO cria workers sozinho no bundle do Next: os arquivos
    maplibre-gl-worker.mjs e maplibre-gl-shared.mjs vivem em public/ e o
-   setWorkerUrl está no MapView.tsx. Ao ATUALIZAR o maplibre, re-copiar os
-   dois arquivos para public/ (senão o mapa para de renderizar polígonos).
+   setWorkerUrl está no MapView.tsx e no MapViewTI.tsx. Ao ATUALIZAR o
+   maplibre, re-copiar os dois arquivos para public/ (senão o mapa para de
+   renderizar polígonos).
 9. Playwright (devDep) é usado para depurar o mapa em produção com scripts
    .tmp.js na raiz do projeto (ex.: test-*.tmp.js). Apagar esses scripts de
    teste e os .png depois de usar (não devem ser commitados).

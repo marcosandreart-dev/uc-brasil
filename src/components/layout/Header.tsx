@@ -5,6 +5,8 @@ const NAV = [
   { href: "/", label: "Início" },
   { href: "/mapa", label: "Mapa" },
   { href: "/buscar", label: "Buscar UCs" },
+  { href: "/terras-indigenas", label: "Terras Indígenas" },
+  { href: "/mapa-ti", label: "Mapa TIs" },
 ];
 
 export function Header() {

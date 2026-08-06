@@ -1,11 +1,19 @@
 import type { MetadataRoute } from "next";
 import { listarSlugs } from "@/lib/ucs";
+import { listarSlugsTI } from "@/lib/tis";
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://ucbrasil.vercel.app";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const ucs = listarSlugs().map(({ slug }) => ({
     url: `${BASE_URL}/ucs/${slug}`,
+    lastModified: new Date(),
+    changeFrequency: "monthly" as const,
+    priority: 0.7,
+  }));
+
+  const tis = listarSlugsTI().map(({ slug }) => ({
+    url: `${BASE_URL}/terras-indigenas/${slug}`,
     lastModified: new Date(),
     changeFrequency: "monthly" as const,
     priority: 0.7,
@@ -31,5 +39,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.9,
     },
     ...ucs,
+    {
+      url: `${BASE_URL}/terras-indigenas`,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 0.9,
+    },
+    {
+      url: `${BASE_URL}/mapa-ti`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
+    },
+    ...tis,
   ];
 }
