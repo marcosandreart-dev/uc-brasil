@@ -51,6 +51,14 @@ export default function MapView() {
     }
     mapRef.current = map;
 
+    if (typeof window !== "undefined") {
+      (window as any).__ucMap = map;
+      console.log(
+        "[uc-debug] layers:",
+        map.getStyle().layers.map((l: any) => l.id).join(",")
+      );
+    }
+
     let dados: { features: Array<{ geometry: any; properties: any }> } | null = null;
     let adicionado = false;
 
@@ -156,6 +164,10 @@ export default function MapView() {
         adicionarBasemap();
         adicionado = true;
         setStatus("pronto");
+        console.log(
+          "[uc-debug] layers after add:",
+          map.getStyle().layers.map((l: any) => l.id).join(",")
+        );
       } catch {
         setStatus("erro");
       }
