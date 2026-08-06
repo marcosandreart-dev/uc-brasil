@@ -5,7 +5,7 @@ Arquivo de handoff: se o acesso for perdido, outra IA (ou o mesmo agente) deve
 ler este arquivo ANTES de continuar o trabalho. Ele descreve o estado exato do
 projeto, as decisões tomadas e o passo a passo do que falta fazer.
 
-Última atualização: Dia 1 a 3 concluídos (API + Home + Busca + Ficha + SEO; build e smoke test OK).
+Última atualização: 05/08/2026 — MVP publicado na Vercel + Mapa implementado (MapLibre) + deploy automático via GitHub Actions.
 ================================================================================
 
 1. O QUE É ESTE PROJETO
@@ -15,15 +15,19 @@ Conservação (UCs) do Brasil — federais, estaduais e municipais — com dados
 reais e oficiais do CNUC (Cadastro Nacional de Unidades de Conservação, MMA).
 
 D E C I S O E S   T O M A D A S   (NÃO reverter sem conversar com o usuário):
-- Escopo REDUZIDO a catálogo informativo: Home + Busca/Filtros + Ficha da UC.
-- CORTADO: mapa (MapLibre), dashboard, favoritos, compartilhamento, PWA
-  offline, autenticação, multilíngue, comparação, polígonos.
+- Escopo ATUAL: catálogo informativo: Home + Busca/Filtros + Ficha da UC + MAPA.
+- IMPLEMENTADO: mapa interativo (MapLibre GL) com polígonos reais do CNUC em
+  /mapa. Polígonos: shapefile "Polígono CNUC 2025_08" (dados.mma.gov.br),
+  convertidos para GeoJSON simplificado em public/ucs_poligonos.geojson (7 MB).
+- CORTADO (ainda): dashboard, favoritos, compartilhamento, PWA offline,
+  autenticação, multilíngue, comparação.
 - CORTADO: banco de dados (PostgreSQL/PostGIS/Redis) e Docker — não há Docker
-  instalado na máquina. Os dados vivem em um ARQUIVO JSON gerado do CSV do CNUC.
+  instalado na máquina. Os dados vivem em ARQUIVOS JSON: src/data/ucs.json
+  (catálogo) e public/ucs_poligonos.geojson (geometrias).
 - Stack fixa: Next.js 14 (App Router) + React 18 + TypeScript + Tailwind CSS.
 - Deploy alvo: Vercel (gratuito). Sem banco, sem serviços pagos.
 - Idioma do código/comentários: português brasileiro. UI em PT-BR.
-- Meta: MVP público em 7 dias. Dia 1 já concluído.
+- Meta: MVP público em 7 dias. MVP + Mapa publicados.
 
 ================================================================================
 2. ESTADO ATUAL DO PROJETO (o que já está pronto)
@@ -53,9 +57,25 @@ D E C I S O E S   T O M A D A S   (NÃO reverter sem conversar com o usuário):
           "codigo_wdpa":"555682724" }
       Distribuição: Federal 1101 / Estadual 1440 / Municipal 880.
                      Uso Sustentável 2322 / Proteção Integral 1099.
+[ x ] Mapa interativo implementado em 05/08/2026:
+      - Página /mapa (server) + MapView.tsx (client, dynamic ssr:false)
+      - maplibre-gl v6 (import NAMED: `import * as maplibregl` — a v6 não tem
+        export default). CSS: maplibre-gl/dist/maplibre-gl.css.
+      - Basemap gratuito: CARTO positron (basemaps.cartocdn.com GL style)
+      - Polígonos: public/ucs_poligonos.geojson (7 MB, servido como estático;
+        NÃO passa pelo bundle). Conversão via scripts/transform/shp-to-geojson.js
+        usando o pacote `shapefile` (streaming) + `simplify-js` (tolerância 0.005
+        graus, 96% menos vértices).
+      - Dependências de transform (devDependencies): shapefile, simplify-js.
+      - IMPORTANTE: o `shpjs` NÃO funciona (OOM em Node) — usar `shapefile`.
+      - SHP bruto: scripts/data/cnuc/cnuc_2025_08.* (gitignored via scripts/data/).
+      - Casamento polígonos ↔ ucs.json por cd_cnuc/código + nome: 3.120 de 3.122.
+      - /mapa adicionado ao Header (nav) e ao sitemap.ts.
 [ x ] Dependências instaladas (npm install, 343 pacotes).
-      Removidos do package.json: maplibre-gl, @maplibre/maplibre-gl,
-      workbox-window, recharts, react-intersection-observer, zustand, date-fns.
+      Removidos do package.json na etapa de redução de escopo: workbox-window,
+      recharts, react-intersection-observer, zustand, date-fns.
+      maplibre-gl foi REINSTALADO (v6.1.0) para o mapa.
+      shpjs foi instalado e depois REMOVIDO (OOM em Node).
       Mantidos: next, react, react-dom, typescript, tailwindcss,
       @tailwindcss/typography, shadcn-ui, @tanstack/react-query,
       react-hook-form, zod, @hookform/resolvers, clsx, tailwind-merge,
