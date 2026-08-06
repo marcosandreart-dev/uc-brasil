@@ -33,102 +33,121 @@ export default function MapView() {
     });
     mapRef.current = map;
 
-    const handleError = () => setStatus("erro");
-    map.on("error", handleError);
+    let dados: { features: Array<{ geometry: any; properties: any }> } | null = null;
+    let adicionado = false;
 
-    map.on("load", async () => {
-      try {
-        const res = await fetch(GEOJSON_URL);
-        if (!res.ok) throw new Error("Falha ao carregar polígonos");
-        const data = await res.json();
+    const adicionarCamadas = () => {
+      if (adicionado || !dados || !map.isStyleLoaded()) return;
+      map.addSource("ucs", { type: "geojson", data: dados as any });
 
-        map.addSource("ucs", { type: "geojson", data });
+      map.addLayer({
+        id: "ucs-fill",
+        type: "fill",
+        source: "ucs",
+        paint: { "fill-color": "#15803d", "fill-opacity": 0.35 },
+      });
 
-        map.addLayer({
-          id: "ucs-fill",
-          type: "fill",
-          source: "ucs",
-          paint: { "fill-color": "#15803d", "fill-opacity": 0.35 },
-        });
+      map.addLayer({
+        id: "ucs-line",
+        type: "line",
+        source: "ucs",
+        paint: { "line-color": "#166534", "line-width": 0.8 },
+      });
 
-        map.addLayer({
-          id: "ucs-line",
-          type: "line",
-          source: "ucs",
-          paint: { "line-color": "#166534", "line-width": 0.8 },
-        });
-
-        const bounds = new maplibregl.LngLatBounds();
-        for (const feature of data.features) {
-          const geometry = feature.geometry;
-          if (!geometry) continue;
-          if (geometry.type === "Polygon") {
-            for (const ring of geometry.coordinates) {
+      const bounds = new maplibregl.LngLatBounds();
+      for (const feature of dados.features) {
+        const geometry = feature.geometry;
+        if (!geometry) continue;
+        if (geometry.type === "Polygon") {
+          for (const ring of geometry.coordinates) {
+            for (const [lng, lat] of ring) bounds.extend([lng, lat]);
+          }
+        } else if (geometry.type === "MultiPolygon") {
+          for (const polygon of geometry.coordinates) {
+            for (const ring of polygon) {
               for (const [lng, lat] of ring) bounds.extend([lng, lat]);
             }
-          } else if (geometry.type === "MultiPolygon") {
-            for (const polygon of geometry.coordinates) {
-              for (const ring of polygon) {
-                for (const [lng, lat] of ring) bounds.extend([lng, lat]);
-              }
-            }
           }
         }
-        if (!bounds.isEmpty()) {
-          map.fitBounds(bounds, { padding: 40, maxZoom: 10 });
-        }
-
-        map.on("click", "ucs-fill", (e) => {
-          const feature = e.features?.[0];
-          if (!feature) return;
-          const p = feature.properties || {};
-          const nome = escapar(p.nome);
-          const slug = p.slug ? escapar(p.slug) : null;
-          const categoria = escapar(p.categoria);
-          const esfera = escapar(p.esfera);
-          const uf = escapar(p.uf);
-
-          const root = document.createElement("div");
-          root.className = "space-y-1";
-          const titulo = document.createElement("strong");
-          titulo.className = "block text-sm leading-snug";
-          titulo.textContent = nome;
-          root.appendChild(titulo);
-
-          const detalhe = document.createElement("span");
-          detalhe.className = "block text-xs text-gray-500";
-          detalhe.textContent = [categoria, esfera, uf].filter(Boolean).join(" · ");
-          root.appendChild(detalhe);
-
-          if (slug) {
-            const link = document.createElement("a");
-            link.href = `/ucs/${slug}`;
-            link.className = "mt-2 inline-block text-xs font-medium text-primary-600 underline";
-            link.textContent = "Abrir ficha da UC →";
-            root.appendChild(link);
-          }
-
-          new maplibregl.Popup({ closeButton: false, maxWidth: "280px" })
-            .setLngLat(e.lngLat)
-            .setDOMContent(root)
-            .addTo(map);
-        });
-
-        map.on("mouseenter", "ucs-fill", () => {
-          map.getCanvas().style.cursor = "pointer";
-        });
-        map.on("mouseleave", "ucs-fill", () => {
-          map.getCanvas().style.cursor = "";
-        });
-
-        setStatus("pronto");
-      } catch {
-        setStatus("erro");
       }
-    });
+      if (!bounds.isEmpty()) {
+        map.fitBounds(bounds, { padding: 40, maxZoom: 10 });
+      }
+
+      map.on("click", "ucs-fill", (e) => {
+        const feature = e.features?.[0];
+        if (!feature) return;
+        const p = feature.properties || {};
+        const nome = escapar(p.nome);
+        const slug = p.slug ? escapar(p.slug) : null;
+        const categoria = escapar(p.categoria);
+        const esfera = escapar(p.esfera);
+        const uf = escapar(p.uf);
+
+        const root = document.createElement("div");
+        root.className = "space-y-1";
+        const titulo = document.createElement("strong");
+        titulo.className = "block text-sm leading-snug";
+        titulo.textContent = nome;
+        root.appendChild(titulo);
+
+        const detalhe = document.createElement("span");
+        detalhe.className = "block text-xs text-gray-500";
+        detalhe.textContent = [categoria, esfera, uf].filter(Boolean).join(" · ");
+        root.appendChild(detalhe);
+
+        if (slug) {
+          const link = document.createElement("a");
+          link.href = `/ucs/${slug}`;
+          link.className = "mt-2 inline-block text-xs font-medium text-primary-600 underline";
+          link.textContent = "Abrir ficha da UC →";
+          root.appendChild(link);
+        }
+
+        new maplibregl.Popup({ closeButton: false, maxWidth: "280px" })
+          .setLngLat(e.lngLat)
+          .setDOMContent(root)
+          .addTo(map);
+      });
+
+      map.on("mouseenter", "ucs-fill", () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+      map.on("mouseleave", "ucs-fill", () => {
+        map.getCanvas().style.cursor = "";
+      });
+
+      adicionado = true;
+      setStatus("pronto");
+    };
+
+    const tentarAdicionar = () => adicionarCamadas();
+
+    map.on("load", tentarAdicionar);
+    map.on("style.load", tentarAdicionar);
+
+    fetch(GEOJSON_URL)
+      .then((res) => {
+        if (!res.ok) throw new Error("Falha ao carregar polígonos");
+        return res.json();
+      })
+      .then((data) => {
+        dados = data;
+        adicionarCamadas();
+      })
+      .catch(() => setStatus("erro"));
+
+    const watchdog = window.setInterval(tentarAdicionar, 1000);
+    const failsafe = window.setTimeout(() => {
+      if (!adicionado) {
+        if (map.isStyleLoaded() && dados) adicionarCamadas();
+        else setStatus("erro");
+      }
+    }, 25000);
 
     return () => {
-      map.off("error", handleError);
+      window.clearInterval(watchdog);
+      window.clearTimeout(failsafe);
       map.remove();
       mapRef.current = null;
     };
