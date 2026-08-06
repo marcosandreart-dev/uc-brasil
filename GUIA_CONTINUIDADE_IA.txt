@@ -29,6 +29,40 @@ D E C I S O E S   T O M A D A S   (NÃO reverter sem conversar com o usuário):
 - Idioma do código/comentários: português brasileiro. UI em PT-BR.
 - Meta: MVP público em 7 dias. MVP + Mapa publicados.
 
+===============================================================================
+1.5. RESUMO EXECUTIVO — planejado vs feito vs falta (06/08/2026)
+-------------------------------------------------------------------------------
+PLANEJADO (MVP, AGENTS.md):
+  1) Home com estatísticas nacionais
+  2) Pesquisa inteligente
+  3) Mapa interativo
+  4) Ficha detalhada de cada UC
+  5) Busca/filtro por estado, município, categoria, bioma, esfera e órgão gestor
+  6) Favoritos (local storage)
+  7) Compartilhamento
+  8) App instalável (PWA) + deploy + CI
+
+FEITO (publicado em https://uc-brasil-iota.vercel.app):
+  [x] 1) Home com estatísticas (cards total/esfera/área/biomas/estados)
+  [x] 2) Busca inteligente em /buscar (debounce, paginação, estados)
+  [x] 3) Mapa interativo /mapa — FOI ALÉM do MVP: polígonos reais do CNUC
+        (3.122 features) em vez de marcadores simples, com popup -> ficha
+  [x] 4) Ficha da UC /ucs/[slug] (SSG, 3.421 páginas, ISR 86400)
+  [x] 5) Filtros por esfera, categoria, bioma e UF; município e órgão gestor
+        apenas via busca por texto (NÃO como filtro dedicado)
+  [x] 8) Deploy Vercel + CI GitHub Actions (prebuilt, --archive=tgz)
+
+FALTA para fechar o MVP:
+  [ ] 6) Favoritos (local storage) — nada implementado ainda
+  [ ] 7) Compartilhamento (botão share / navigator.share) — não existe
+  [ ] 8) PWA (manifest.json, service worker, ícones, instalável) — não existe
+  [ ] Filtros dedicados de município e órgão gestor (hoje só via texto)
+  [ ] Revisão responsividade mobile (375px) e acessibilidade básica
+
+DEPOIS do MVP: dashboard com gráficos, comparação entre UCs, API pública,
+painel administrativo, multilíngue.
+
+
 ================================================================================
 2. ESTADO ATUAL DO PROJETO (o que já está pronto)
 ================================================================================
